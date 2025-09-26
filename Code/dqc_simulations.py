@@ -29,21 +29,21 @@ _g = 2.0023
 # molecular parameters
 
 ## set P(r) 
-_rrange = np.arange(1.0, 3.0, 0.02)
-_mu1, _sm1 = 1.5, 0.03 # in nm
+_rrange = np.arange(1.6, 2.5, 0.02)
+_mu1, _sm1 = 2.0, 0.05 # in nm
 _pr1 = np.exp(-(_rrange - _mu1)**2/(2*_sm1**2))
 _pr1 /= _pr1.sum()
 _prf = interp1d(_rrange, _pr1)
 
-# a series of pulse amplitudes (MHz) and lengths (ns) 
-_wps = [125., 83.4, 62.5, 50., 41.7, 35.72, 31.26]
-_tps = [4, 6, 8, 10, 12, 14, 16]
+# set pulse amplitudes and lengths 
+_wps = [500, 125., 62.5, 41.67, 31.25, 25., 20.84, 17.86, 15.63]
+_tps = [1, 4, 8, 12, 16, 20, 24, 28, 32]
 
 # run simulations
 for k in range(len(_wps)):
     _start = time.time()
 
-    # theta values
+    # other parameters
     _thtab = np.linspace(0, np.pi/2, 100)
     _pth = np.sin(_thtab)
     _pth /= _pth.sum()
@@ -59,24 +59,24 @@ for k in range(len(_wps)):
     _tp = _tps[k]*1E-3 # pulse length in us
     
     # pulse separations in time-domain
-    _tm = 0.6
+    _tm = 0.8
     _t1 = 0.04
     _dt = 0.008
     #_tmin = 0.3
     _ttab = np.arange(0, _tm, _dt)
     
     # simulate the signal
-    _mmax = 4*1E4 ## max number of iterations
+    _mmax = 5*1E4 ## max number of iterations
     
-    _res1 = 0 # DQC coherence transfer pathway
-    _res2 = 0 # other coherence transfer pathway
-    _res3 = 0 # other coherence transfer pathway
+    _resY = 0
+    _resX = 0
+    _resZ = 0
 
     _m = 1
     while _m <= _mmax:
     
         _om1, _om2 = np.random.choice(_omtab, p = _pom), np.random.choice(_omtab, p = _pom)
-        #_om1, _om2 = 0., 0. # for ideal pulses
+        #_om1, _om2 = 0., 0.
         
         if _om1==_om2:
             _om2 += 1E-4
@@ -90,25 +90,31 @@ for k in range(len(_wps)):
         _sig2 = sig(_om1, _om2, _dip, (_tm - _ttab)/2, _t1, (_tm + _ttab)/2, _wp, _tp, path = "2")
         _sig3 = sig(_om1, _om2, _dip, (_tm - _ttab)/2, _t1, (_tm + _ttab)/2, _wp, _tp, path = "3")
         
-        _res1 += _sig1.real
-        _res2 += _sig2.real
-        _res3 += _sig3.real
+        _resY += _sig1.real
+        _resX += _sig2.real
+        _resZ += _sig3.real
         
         _m += 1
         
-    _res1 /= _mmax
-    _res2 /= _mmax
-    _res3 /= _mmax
+    _resY /= _mmax
+    _resX /= _mmax
+    _resZ /= _mmax
     
     _end = time.time() - _start
     
     print("SimuLation with %sk iterations took %s sec." %(int(_mmax*1E-3), np.round(_end,2)))
     
-    plt.plot(_ttab, _res1, 'red')
-    plt.plot(_ttab, _res2, 'blue')
-    plt.plot(_ttab, _res3, 'orange')
+    plt.plot(_ttab, _resY, 'red')
+    plt.plot(_ttab, _resX, 'blue')
+    plt.plot(_ttab, _resZ, 'orange')
     plt.show()
     
-    # save the simulation results
-    _fname = 'DQC_Birad-I_pi-'+str(int(_tps[k]))+'ns.txt'
-    np.savetxt(_fname, np.c_[_ttab, _res1, _res2, _res3])
+    # save the simulation
+    _wpath = r'C:\Users\as836\Desktop\Tau_DQC_Analysis\Simulations'
+    
+    if k >= 1:
+        _fname = 'DQC_20A_pi-'+str(int(_tps[k]))+'ns.txt'
+    else:
+        _fname = 'DQC_20A_pi-ideal.txt'
+    
+    np.savetxt(os.path.join(_wpath,_fname), np.c_[_ttab, _resY, _resX, _resZ])
